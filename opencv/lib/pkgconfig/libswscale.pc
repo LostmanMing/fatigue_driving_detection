@@ -1,0 +1,14 @@
+prefix=/home/opencv_x3m
+exec_prefix=${prefix}
+libdir=/home/opencv_x3m/lib
+includedir=/home/opencv_x3m/include
+
+Name: libswscale
+Description: FFmpeg image rescaling library
+Version: 4.8.100
+Requires: 
+Requires.private: libavutil >= 55.78.100
+Conflicts:
+Libs: -L${libdir}  -lswscale 
+Libs.private: -lm
+Cflags: -I${includedir}

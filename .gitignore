@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# Ignore cmake files
+cmake-build-*/
+
+.idea/*
+.idea/deployment.xml
+*.iml
+.idea/modules.xml
+.idea/vcs.xml
+*.xml
