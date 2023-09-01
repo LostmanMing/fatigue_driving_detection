@@ -119,7 +119,8 @@ gboolean StreamMgr::buildDecodeStr() {
         return FALSE;
     }
     if(opts.deviceType == DEVICE_TYPE::FILE){
-        ss << "filesrc location=" << opts.file_path << " name=src  ! qtdemux  ! h264parse ! mppvideodec ! queue ! videoconvert ! appsink name=video_sink";
+        ss << "filesrc location=" << opts.file_path << " name=src  ! qtdemux  ! h264parse ! mppvideodec ! queue ! videoconvert  ! appsink name=video_sink";
+//        ss << "filesrc location=" << opts.file_path << " name=src  ! qtdemux  ! queue ! decodebin ! videoconvert ! appsink name=video_sink";
     } else if(opts.deviceType == DEVICE_TYPE::RTSP){
 
     }
@@ -142,7 +143,7 @@ gboolean StreamMgr::buildDecodeStr() {
 gboolean StreamMgr::buildEecodeStr() {
     GError * err = nullptr;
     std::ostringstream ss;
-    ss << "appsrc name=video_src ! videoconvert ! mpph264enc ! h264parse ! queue ! flvmux ! rtmpsink name=sink location=\'" << opts.rtmp_uri <<" live=1\'";
+    ss << "appsrc name=video_src ! videoconvert ! mpph264enc ! h264parse  ! flvmux ! rtmpsink name=sink location=\'" << opts.rtmp_uri <<" live=1\'";
     std::string mLaunchStr = ss.str();
     spdlog::debug("gstreamer encode pipeline string {}",mLaunchStr);
     data->sink = gst_parse_launch(mLaunchStr.c_str(), &err);

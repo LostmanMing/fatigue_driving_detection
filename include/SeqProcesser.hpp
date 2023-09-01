@@ -254,7 +254,7 @@ public:
                 save_proposal.emplace_back(p.img.clone());
             }
             uniqueLock.unlock();
-            auto file_name = getCurrentTimeFilename("/home/marvsmart/workspace/data/" + FatigueClass[idx],".avi");
+            auto file_name = getCurrentTimeFilename("/home/linaro/workspace/data/" + FatigueClass[idx],".avi");
             cv::VideoWriter writer(file_name,cv::VideoWriter::fourcc('X', 'V', 'I', 'D'),fps,cv::Size(width, height));
 
             for(const auto& img : save_proposal){

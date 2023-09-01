@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.18)
 project(fatigue_driving_detection)
 
 set(CMAKE_BUILD_TYPE DEBUG)
@@ -20,8 +20,12 @@ message(11)
 
 
 # opencv
-set(OpenCV_DIR /usr/local/arm/share/OpenCV)
+#set(OpenCV_DIR /usr/local/arm/share/OpenCV)
 find_package(OpenCV REQUIRED)
+message(STATUS "Opnecv ;ibrary status: ")
+message(STATUS "> version: ${OpenCV_VERSION} ")
+message(STATUS "libraries: ${OpenCV_LIBS} ")
+message(STATUS "> include: ${OpenCV_INCLUDE_DIRS}  ")
 
 include(FindPkgConfig)
 pkg_check_modules(GST     REQUIRED gstreamer-1.0)
@@ -43,7 +47,8 @@ include_directories(${RKNN_API_PATH}/include)
 # include_directories(${CMAKE_SOURCE_DIR}/3rdparty)
 include_directories( ${RGA_PATH})
 include_directories( ${CMAKE_SOURCE_DIR}/include)
-include_directories(/usr/local/arm/include)
+#include_directories(/usr/local/arm/include)
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/inc
@@ -83,7 +88,6 @@ target_link_libraries(fatigue_driving_detection
         ${GFLAGS_LIBRARIES}
         ${JSONCPP_LIBRARIES}
         ${RKNN_RT_LIB}
-        ${RGA_LIB}
         ${OpenCV_LIBS}
         pthread
         gstpbutils-1.0

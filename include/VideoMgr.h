@@ -11,8 +11,8 @@
 class VideoMgr :public SourceMgr{
 public:
     explicit VideoMgr(ProgramData* data,PipelineOptions &opts) : SourceMgr(data,opts)
-//    ,processer(SeqProcesser(std::move(Yolov6PP::createYolov6PPInfer(opts.pp_path,opts.pp_nc,opts.pp_size)),
-//                           std::move(Yolov6EM::createYolov6PPInfer(opts.em_path,opts.em_nc,opts.em_size)),opts))
+    ,processer(SeqProcesser(std::move(Yolov6PP::createYolov6PPInfer(opts.pp_path,opts.pp_nc,opts.pp_size)),
+                           std::move(Yolov6EM::createYolov6PPInfer(opts.em_path,opts.em_nc,opts.em_size)),opts))
                            {
 
                            }
@@ -25,7 +25,7 @@ private:
     int cnt = 0;
     GstElement* video_sink = nullptr;
     GstElement* video_src = nullptr;
-//    SeqProcesser processer;
+    SeqProcesser processer;
 };
 
 

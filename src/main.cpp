@@ -55,6 +55,7 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
 const std::string CONFIG_PATH = "../config/mpp_file_rtmp.json";
 
 int main(){
+
     spdlog::set_level(spdlog::level::debug);
 
     PipelineOptions opts;

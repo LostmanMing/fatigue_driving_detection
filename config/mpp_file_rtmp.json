@@ -2,7 +2,7 @@
   "type": "file",
   "decode_config" : {
     "stream": {
-      "uri": "/home/marvsmart/workspace/sample/v3.mp4"
+      "uri": "/home/linaro/workspace/sample/video.mp4"
     },
     "video_sink": {
       "sync": true,
