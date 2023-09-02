@@ -8,16 +8,19 @@
 #include "Yolov6PP.h"
 #include "Yolov6EM.h"
 #include "numeric"
+#include "curl/curl.h"
 
 class SeqProcesser {
 public:
     SeqProcesser(std::unique_ptr<Yolov6Base> inferpp, std::unique_ptr<Yolov6Base> inferem,PipelineOptions &opts)
     {
+        curl_global_init(CURL_GLOBAL_ALL);
         ppinfer = std::move(inferpp);
         eminfer = std::move(inferem);
         width = opts.width;
         height = opts.height;
         max_size = opts.frameRate * 3;
+        token = "X-Auth-Token:" + opts.token;
         during_fatigue = std::vector<int>(4,0);
         workerThread = std::thread([&](){
             while(true){
@@ -262,13 +265,56 @@ public:
             }
             writer.release();
             /* upload vide file */
+            CURL *curl;
+            curl = curl_easy_init();
+            std::string readBuffer;
+            if(curl){
+                struct curl_httppost *formpost = nullptr;
+                struct curl_httppost *lastptr = nullptr;
+                // 添加表单数据
+                curl_formadd(&formpost,
+                             &lastptr,
+                             CURLFORM_COPYNAME, "input_video",
+                             CURLFORM_FILE, file_name.c_str(),
+                             CURLFORM_END);
+                curl_easy_setopt(curl, CURLOPT_URL, "https://71696f82bccb4c899786e3e7d3757882.apig.cn-north-4.huaweicloudapis.com/v1/infers/8f0a3dda-d67e-417a-be5e-4eaeaf2c82c8");
+                curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+                curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // 开启详细输出
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback); // 设置写回调函数
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer); // 设置写回调函数的第四个参数
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // 跳过SSL验证
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // 跳过SSL验证
+                // 设置HTTP头
+                struct curl_slist *headers = nullptr;
+                headers = curl_slist_append(headers,token.c_str());
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+                auto res = curl_easy_perform(curl);
+
+                if(res != CURLE_OK){
+                    spdlog::error("curl_easy_perform() failed: {}",curl_easy_strerror(res));
+                } else{
+                    spdlog::info("response from ModelArts : {}", readBuffer);
+                }
+
+                curl_easy_cleanup(curl);
+                curl_formfree(formpost);
+                curl_slist_free_all(headers);
+            }else{
+                spdlog::error("curl init failed!");
+            }
         });
         save.detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::unique_lock<std::mutex> uniqueLock(mutex_);
         proposal_.clear();
     }
-
+    //响应报文回调函数
+    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
+        size_t totalSize = size * nmemb;
+        out->append((char*)contents, totalSize);
+        return totalSize;
+    }
     ~SeqProcesser(){
         if (workerThread.joinable()) {
             workerThread.join();
@@ -295,7 +341,7 @@ private:
     int max_size;
     int width;
     int height;
-
+    std::string token;
     std::thread workerThread;
 };
 

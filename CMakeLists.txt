@@ -26,6 +26,7 @@ message(STATUS "Opnecv ;ibrary status: ")
 message(STATUS "> version: ${OpenCV_VERSION} ")
 message(STATUS "libraries: ${OpenCV_LIBS} ")
 message(STATUS "> include: ${OpenCV_INCLUDE_DIRS}  ")
+find_package(CURL REQUIRED)
 
 include(FindPkgConfig)
 pkg_check_modules(GST     REQUIRED gstreamer-1.0)
@@ -33,6 +34,7 @@ pkg_check_modules(GSTAPP  REQUIRED gstreamer-app-1.0)
 pkg_check_modules(GLIB    REQUIRED glib-2.0)
 pkg_check_modules(GFLAGS  REQUIRED gflags)
 pkg_check_modules(JSONCPP REQUIRED jsoncpp)
+pkg_check_modules(CURL REQUIRED libcurl)
 
 
 message(STATUS "GST:   ${GST_INCLUDE_DIRS},${GST_LIBRARY_DIRS},${GST_LIBRARIES}")
@@ -42,13 +44,13 @@ message(STATUS "JSON:  ${JSON_INCLUDE_DIRS},${JSON_LIBRARY_DIRS},${JSON_LIBRARIE
 message(STATUS "GFLAGS:${GFLAGS_INCLUDE_DIRS},${GFLAGS_LIBRARY_DIRS},${GFLAGS_LIBRARIES}")
 
 
-message(${RKNN_API_PATH}/${LIB_ARCH}/librknnrt.so)
+message(STATUS ${RKNN_API_PATH}/${LIB_ARCH}/librknnrt.so)
 include_directories(${RKNN_API_PATH}/include)
 # include_directories(${CMAKE_SOURCE_DIR}/3rdparty)
 include_directories( ${RGA_PATH})
 include_directories( ${CMAKE_SOURCE_DIR}/include)
 #include_directories(/usr/local/arm/include)
-include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(/usr/include/aarch64-linux-gnu)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/inc
@@ -57,6 +59,7 @@ include_directories(
         ${GLIB_INCLUDE_DIRS}
         ${GFLAGS_INCLUDE_DIRS}
         ${JSONCPP_INCLUDE_DIRS}
+        ${OpenCV_INCLUDE_DIRS}
 )
 message(  ${OpenCV_LIBS})
 
@@ -80,6 +83,8 @@ add_executable(fatigue_driving_detection
         src/Yolov6PP.cpp
         src/postprocess.cpp
         )
+message(${CURL_INCLUDE_DIRS})
+target_include_directories(fatigue_driving_detection PRIVATE ${CURL_INCLUDE_DIRS})
 
 target_link_libraries(fatigue_driving_detection
         ${GST_LIBRARIES}
@@ -91,6 +96,7 @@ target_link_libraries(fatigue_driving_detection
         ${OpenCV_LIBS}
         pthread
         gstpbutils-1.0
+        CURL::libcurl
         )
 
 add_executable(testnpu

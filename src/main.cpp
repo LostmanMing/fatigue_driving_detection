@@ -7,6 +7,7 @@
 #include "common.h"
 #include "StreamMgr.h"
 
+
 static void Parse(PipelineOptions& config,const std::string& config_path){
     Json::Value root;
     Json::Reader g_reader;
@@ -49,7 +50,10 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
         config.pp_nc = model_config["pp_nc"].asInt();
         config.em_nc = model_config["em_nc"].asInt();
     }
-
+    if(root.isMember("token")){
+        Json::Value token = root["token"];
+        config.token = token.asString();
+    }
 }
 
 const std::string CONFIG_PATH = "../config/mpp_file_rtmp.json";

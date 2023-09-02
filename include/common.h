@@ -30,7 +30,7 @@ public:
     bool video_sink_emit_signals;
     std::string sink_format;
     int frame_count;
-
+    std::string token;
     std::string pp_path;
     std::string em_path;
     int pp_size;
