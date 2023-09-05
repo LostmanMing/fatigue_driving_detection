@@ -119,7 +119,7 @@ std::vector<Object> Yolov6PP::infer(cv::Mat &mat) {
     //sacle
     float size_scale = std::min(width / (ori_width*1.0), height / (ori_height*1.0));
     decode_outputs((float *)outputs[0].buf,output_size,objects,size_scale,ori_width,ori_height,anchor_points,stride_tensor);
-    draw_objects(mat,objects);
+//    draw_objects(mat,objects);
     rknn_outputs_release(ctx, rknn_io_num.n_output, outputs);
     return objects;
 }

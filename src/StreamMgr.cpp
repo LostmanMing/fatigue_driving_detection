@@ -70,19 +70,6 @@ gboolean StreamMgr::Init() {
         opts.height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
         opts.frameRate = cap.get(cv::CAP_PROP_FPS);
         cap.release();
-//        GstDiscovererInfo *info = gst_discoverer_discover_uri(discoverer, opts.file_path.c_str(), &error);
-//        if (!info) {
-//            spdlog::error("Error discovering URI: %s\n", error->message);
-//            g_error_free(error);
-//            g_object_unref(discoverer);
-//            return -1;
-//        }
-//        GstDiscovererStreamInfo *stream_info = gst_discoverer_info_get_stream_info(info);
-//        if (GST_IS_DISCOVERER_VIDEO_INFO(stream_info)) {
-//            opts.width = gst_discoverer_video_info_get_width(GST_DISCOVERER_VIDEO_INFO(stream_info));
-//            opts.height = gst_discoverer_video_info_get_height(GST_DISCOVERER_VIDEO_INFO(stream_info));
-//            spdlog::debug("Width: {}, Height: {}}}", opts.width, opts.height);
-//        }
     }
 //
 //    g_object_unref(discoverer);
@@ -122,7 +109,7 @@ gboolean StreamMgr::buildDecodeStr() {
         ss << "filesrc location=" << opts.file_path << " name=src  ! qtdemux  ! h264parse ! mppvideodec ! queue ! videoconvert  ! appsink name=video_sink";
 //        ss << "filesrc location=" << opts.file_path << " name=src  ! qtdemux  ! queue ! decodebin ! videoconvert ! appsink name=video_sink";
     } else if(opts.deviceType == DEVICE_TYPE::RTSP){
-
+        ss << "rtspsrc location=" << opts.rtsp_uri << "name=src ! rtph264depay ! h264parse ! mppvideodec ! queue ! videoconvert ! appsink name=video_sink";
     }
 
     //ss << "rtspsrc location=" << opts.rtsp_uri << " name=src ! application/x-rtp,media=audio ! rtpmp4gdepay ! aacparse ! avdec_aac ! audioconvert ! audioresample ! appsink name=audio_sink src. ! application/x-rtp,media=video ! rtph264depay ! h264parse ! nvv4l2decoder cudadec-memtype=2 ! nvvideoconvert ! appsink name=video_sink";

@@ -18,9 +18,9 @@
     }
   },
   "model_config" : {
-    "pp_path" : "../model/RK356X/step1.rknn",
-    "pp_size": 640,
-    "pp_nc" : 2,
+    "pp_path" : "../model/RK356X/opt_224_93.rknn",
+    "pp_size": 224,
+    "pp_nc" : 3,
     "em_path" : "../model/RK356X/step2.rknn",
     "em_size" : 224,
     "em_nc" : 4

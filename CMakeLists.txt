@@ -49,6 +49,7 @@ include_directories(${RKNN_API_PATH}/include)
 # include_directories(${CMAKE_SOURCE_DIR}/3rdparty)
 include_directories( ${RGA_PATH})
 include_directories( ${CMAKE_SOURCE_DIR}/include)
+include_directories( ${CMAKE_SOURCE_DIR}/APIGW)
 #include_directories(/usr/local/arm/include)
 include_directories(/usr/include/aarch64-linux-gnu)
 
@@ -72,6 +73,14 @@ link_directories(
         ${OpenCV_LIBS}
 )
 
+add_library(gw SHARED
+        APIGW/hasher.cpp
+        APIGW/RequestParams.cpp
+        APIGW/signer.cpp
+        APIGW/utils.cpp)
+
+target_include_directories(gw PRIVATE ${PROJECT_SOURCE_DIR}/APIGW)
+target_link_libraries(gw ssl  CURL::libcurl crypto)
 
 add_executable(fatigue_driving_detection
         src/main.cpp
@@ -97,7 +106,10 @@ target_link_libraries(fatigue_driving_detection
         pthread
         gstpbutils-1.0
         CURL::libcurl
+        gw
         )
+
+
 
 add_executable(testnpu
         src/test_npu.cpp

@@ -7,11 +7,12 @@
 #include "Yolov6EM.h"
 #include "im2d_type.h"
  int main(){
+    spdlog::set_level(spdlog::level::debug);
      cv::Mat mat = cv::imread("../model/driver.jpg");
 //     cv::Mat img;
 //     cv::cvtColor(mat, img, cv::COLOR_BGR2RGB);
-     std::string rknn_path_1 = "../model/RK356X/step1.rknn";
-     std::unique_ptr<Yolov6Base> yolov6pp = Yolov6PP::createYolov6PPInfer(rknn_path_1,2,640);
+     std::string rknn_path_1 = "../model/RK356X/opt_224_93.rknn";
+     std::unique_ptr<Yolov6Base> yolov6pp = Yolov6PP::createYolov6PPInfer(rknn_path_1,3,224);
 
      yolov6pp->infer(mat);
 

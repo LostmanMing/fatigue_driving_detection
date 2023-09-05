@@ -21,7 +21,7 @@
 struct Object
 {
     cv::Rect_<float> rect;
-    int label;
+    int label = -1;
     float prob;
 };
 struct AnchorPoints {

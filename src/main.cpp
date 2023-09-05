@@ -34,6 +34,9 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
             config.sink_format = video_sink["format"].asString();
             config.height = video_sink["height"].asInt();
             config.width = video_sink["width"].asInt();
+            if(video_sink.isMember("fps")){
+                config.frameRate = video_sink["fps"].asInt();
+            }
         }
     }
     if(root.isMember("encode_config")){
@@ -56,11 +59,11 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
     }
 }
 
-const std::string CONFIG_PATH = "../config/mpp_file_rtmp.json";
+const std::string CONFIG_PATH = "../config/mpp_rtsp_rtmp.json";
 
 int main(){
 
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::info);
 
     PipelineOptions opts;
     Parse(opts,CONFIG_PATH);

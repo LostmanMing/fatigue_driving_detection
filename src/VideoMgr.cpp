@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include "VideoMgr.h"
+std::string SeqProcesser::token = "";
 
 GstFlowReturn VideoMgr::Excute(GstElement *bin) {
 
@@ -13,11 +14,11 @@ GstFlowReturn VideoMgr::Excute(GstElement *bin) {
     if (sample) {
         GstBuffer* buffer = gst_sample_get_buffer(sample);
         // for debug
-        GstClockTime timestamp;
-        timestamp = GST_BUFFER_PTS(buffer);
-        g_print("Timestamp: %" GST_TIME_FORMAT "\n", GST_TIME_ARGS(timestamp));
+//        GstClockTime timestamp;
+//        timestamp = GST_BUFFER_PTS(buffer);
+//        g_print("Timestamp: %" GST_TIME_FORMAT "\n", GST_TIME_ARGS(timestamp));
 //        sleep(1);
-        GstCaps *caps = gst_sample_get_caps(sample);
+//        GstCaps *caps = gst_sample_get_caps(sample);
 //        if (caps) {
 //            gchar *caps_str = gst_caps_to_string(caps);
 //            g_print("Sample format: %s\n", caps_str);
@@ -33,7 +34,9 @@ GstFlowReturn VideoMgr::Excute(GstElement *bin) {
             cv::cvtColor(img_NV12,img_bgr,cv::COLOR_YUV2BGR_NV12);
             {
                 std::lock_guard<std::mutex> grd(processer.mutex_);
-                processer.frames_.emplace(img_bgr,cnt++);
+                processer.frames_.emplace(img_bgr,cnt,need_infer);
+                need_infer = !need_infer;
+//                spdlog::info("frame queue size :{}",processer.frames_.size());
                 processer.cv_.notify_one();
             }
             gst_buffer_unmap(buffer, &info);
@@ -60,38 +63,41 @@ void VideoMgr::Init() {
     g_signal_connect(video_sink, "new-sample",
                      G_CALLBACK(sourceCallback), this);
     //指定数据类型，宽高不要指定死，能动态设置宽高
-    g_object_set(
-            G_OBJECT(video_sink),
-            "sync", true ,
-            "emit-signals", true,
+    if(opts.deviceType==DEVICE_TYPE::FILE){
+        g_object_set(
+                G_OBJECT(video_sink),
+                "sync", true ,
+                "emit-signals", true,
 //            "caps", gst_caps_new_simple("video/x-raw",
 //                     "width", G_TYPE_INT, opts.width,
 //                     "height", G_TYPE_INT, opts.height,
 //                     "framerate", GST_TYPE_FRACTION, opts.frameRate, 1,
 //                     "format", G_TYPE_STRING, "BGRx", NULL),
-            nullptr
-    );
-    gst_object_unref(video_sink);
-//
-//    video_src = gst_bin_get_by_name(GST_BIN(sink), "video_src");
-//    g_object_set(
-//            G_OBJECT(video_src),
-//            "sync", false,
-//            "emit-signals", opts.video_sink_emit_signals,
+                nullptr
+        );
+        gst_object_unref(video_sink);
+    }
+    if(opts.deviceType==DEVICE_TYPE::RTSP){
+        g_object_set(
+                G_OBJECT(video_sink),
+//                "sync", true ,
+                "emit-signals", true,
 //            "caps", gst_caps_new_simple("video/x-raw",
-////                                        "width", G_TYPE_INT, opts.width,
-////                                        "height", G_TYPE_INT, opts.height,
-////                                        "framerate", GST_TYPE_FRACTION, opts.frameRate, 1,
-//                                        "format", G_TYPE_STRING, "BGRx", NULL),
-//            NULL
-//    );
+//                     "width", G_TYPE_INT, opts.width,
+//                     "height", G_TYPE_INT, opts.height,
+//                     "framerate", GST_TYPE_FRACTION, opts.frameRate, 1,
+//                     "format", G_TYPE_STRING, "BGRx", NULL),
+                nullptr
+        );
+        gst_object_unref(video_sink);
+    }
+
     /* 插件的 "format" 属性为 GST_FORMAT_TIME。这意味着 "video_src" 插件将会按照时间来处理数据，而不是按照字节或帧数。
      * 这对于同步视频流是很重要的，因为它允许 GStreamer 根据时间戳来正确地调度视频帧的处理和播放。
      * time-based format
      * */
-    g_object_set(video_src, "format", GST_FORMAT_TIME, NULL);
+//    g_object_set(video_src, "format", GST_FORMAT_TIME, NULL);
 
-    /* block 属性设置后，如果appsrc内部队列已满，将阻塞push-buffer、push-buffer-list 或 end-of-stream的调用 */
-    /* g_object_set (video_src, "block", TRUE, NULL); */
-//    gst_object_unref(video_src);
+
+
 }

@@ -129,7 +129,7 @@ std::vector<Object> Yolov6EM::infer(cv::Mat &mat) {
     Object look_around ;
     look_around.label = my_softmax((float *)outputs[1].buf);
     decode_outputs((float *)outputs[0].buf,output_size,objects,size_scale,ori_width,ori_height,anchor_points,stride_tensor);
-    draw_objects(mat,objects);
+//    draw_objects(mat,objects);
     objects.push_back(look_around);
     rknn_outputs_release(ctx, rknn_io_num.n_output, outputs);
     return objects;

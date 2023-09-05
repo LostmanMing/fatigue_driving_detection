@@ -8,6 +8,7 @@
 #include <glib.h>
 #include <gst/gstelement.h>
 #include "opencv2/opencv.hpp"
+#include "postprocess.h"
 
 enum class DEVICE_TYPE{
     FILE,RTSP
@@ -50,13 +51,15 @@ typedef struct
 } ProgramData;
 
 struct FrameOpts{
-    FrameOpts(cv::Mat &img,uint32_t idx) : det_res(std::vector<int>(4,0)), img(img), frame_idx(idx) {}
+    FrameOpts(cv::Mat &img,uint32_t idx,bool need_infer) : det_res(std::vector<int>(4,0)), img(img), frame_idx(idx), need_infer(need_infer) {}
     FrameOpts(){};
     FrameOpts(const FrameOpts &opts){
         img = opts.img.clone();
         det_res = opts.det_res;
         is_det = opts.is_det;
         is_cal = opts.is_cal;
+        need_infer = opts.need_infer;
+        driver_bbox = opts.driver_bbox;
     }
     FrameOpts& operator=(const FrameOpts & opts){
         if(this == &opts){
@@ -66,6 +69,8 @@ struct FrameOpts{
         det_res = opts.det_res;
         is_det = opts.is_det;
         is_cal = opts.is_cal;
+        need_infer = opts.need_infer;
+        driver_bbox = opts.driver_bbox;
         return *this;
     }
     cv::Mat img;
@@ -73,6 +78,8 @@ struct FrameOpts{
     bool is_det = false;
     bool is_cal = false;
     uint32_t frame_idx;
+    bool need_infer = false;
+    Object driver_bbox;
 };
 
 #endif //FATIGUE_DRIVING_DETECTION_COMMON_H

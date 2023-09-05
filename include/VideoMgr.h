@@ -23,6 +23,7 @@ public:
 
 private:
     int cnt = 0;
+    bool need_infer = true;
     GstElement* video_sink = nullptr;
     GstElement* video_src = nullptr;
     SeqProcesser processer;
