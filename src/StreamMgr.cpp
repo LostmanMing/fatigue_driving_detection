@@ -130,7 +130,7 @@ gboolean StreamMgr::buildDecodeStr() {
 gboolean StreamMgr::buildEecodeStr() {
     GError * err = nullptr;
     std::ostringstream ss;
-    ss << "appsrc name=video_src ! videoconvert ! mpph264enc ! h264parse  ! flvmux ! rtmpsink name=sink location=\'" << opts.rtmp_uri <<" live=1\'";
+    ss << "appsrc name=video_src ! videoconvert ! video/x-raw,format=NV12 ! mpph264enc ! h264parse  ! flvmux ! rtmpsink name=sink location=\'" << opts.rtmp_uri <<" live=1\'";
     std::string mLaunchStr = ss.str();
     spdlog::debug("gstreamer encode pipeline string {}",mLaunchStr);
     data->sink = gst_parse_launch(mLaunchStr.c_str(), &err);

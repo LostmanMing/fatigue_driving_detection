@@ -327,9 +327,10 @@ public:
                 save_proposal.emplace_back(p.img.clone());
                 res = p.det_res;
             }
+            cache[std::chrono::steady_clock::now()] = "Detection completed: " + FatigueClass[idx] + ". Initiating video saving and cloud upload.";
             proposal_.clear();
             uniqueLock.unlock();
-            std::string prefix = "/home/linaro/workspace/data/" + FatigueClass[idx];
+            std::string prefix = "/home/linaro/workspace/data/" + FatigueClass[idx] + "_";
             auto file_name = getCurrentTimeFilename(prefix,".avi");
             spdlog::info("[Thread {}] Detected {} behavior, saving file to \"{}\"...", spdlog::details::os::thread_id(),FatigueClass[idx],file_name);
             cv::VideoWriter writer(file_name,cv::VideoWriter::fourcc('X', 'V', 'I', 'D'),this->fps,cv::Size(width, height));
@@ -454,22 +455,24 @@ public:
         }
     }
 
-    std::queue<FrameOpts>  frames_;
     std::mutex mutex_;
     std::condition_variable cv_;
+    std::queue<FrameOpts>  frames_;
+    std::map<std::chrono::steady_clock::time_point, std::string> cache;
 protected:
     std::list<FrameOpts>   proposal_;
 private:
     std::unordered_map<int,std::string> FatigueClass{
-            {0, "Look_around_"},
-            {1, "Phone_call_"},
-            {2, "Squint_"},
-            {3, "Yawn_"}
+            {0, "Look_around"},
+            {1, "Phone_call"},
+            {2, "Squint"},
+            {3, "Yawn"}
     };
 
     std::unique_ptr<Yolov6Base> ppinfer;
     std::unique_ptr<Yolov6Base> eminfer;
     std::vector<int> during_fatigue;      //保存每个类别持续时间
+
 
     int max_size;
     int width;
