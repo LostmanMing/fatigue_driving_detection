@@ -13,13 +13,23 @@
 #include "numeric"
 #include "curl/curl.h"
 #include "signal.h"
-
+#include "tcp_clinent.h"
+#include "ftp.h"
+extern  std::string  videofile_path;
 class SeqProcesser {
 public:
     SeqProcesser(std::unique_ptr<Yolov6Base> inferpp, std::unique_ptr<Yolov6Base> inferem,PipelineOptions &opts)
     {
         // init
         curl_global_init(CURL_GLOBAL_ALL);
+        systime_init_funtion();
+        tcp_client_init();
+        ftp_init();
+
+        thread_tcp_rev = std::thread(tcp_client_rev_date_thread_funtion);
+        thread_tcp_send = std::thread(tcp_client_send_date_thread_funtion);/**/
+        thread_ftp = std::thread(ftp_thread_funtion);/*发送视频到ftp服务器线程*/
+
         ppinfer = std::move(inferpp);
         eminfer = std::move(inferem);
         width = opts.width;
@@ -97,19 +107,19 @@ public:
                         }
                         if(flag){
                             if(get_status_res(1,needs)){
-                                SaveAndUpload(1);
+                                SaveAndUpload(1,proposal_);
                                 continue;
                             }
                             if(get_status_res(0,needs)){
-                                SaveAndUpload(0);
+                                SaveAndUpload(0,proposal_);
                                 continue;
                             }
                             if(get_status_res(3,needs)){
-                                SaveAndUpload(3);
+                                SaveAndUpload(3,proposal_);
                                 continue;
                             }
                             if(get_status_res(2,needs)){
-                                SaveAndUpload(2);
+                                SaveAndUpload(2,proposal_);
                                 continue;
                             }
                             proposal_.clear();
@@ -131,15 +141,7 @@ public:
         if(x >= bound) x = bound - 4;
         return x;
     }
-    bool cmp(Object &a, Object &b, int height, int width){
-        float xra = a.rect.x + a.rect.width;
-        float yra = a.rect.y + a.rect.height;
-        float xrb = b.rect.x + b.rect.width;
-        float yrb = b.rect.y + b.rect.height;
-        auto distance_a = int(xra - width)^2 +  int(yra - height)^2;
-        auto distance_b = int(xrb - width)^2 +  int(yrb - height)^2;
-        return distance_a > distance_b;
-    }
+
     bool major_judge(){
         for (auto it = proposal_.rbegin(); it != proposal_.rend(); ++it) {
             if(!it->is_det){
@@ -310,16 +312,15 @@ public:
     }
 
     // 满足条件时保存视频文件并上传ModelArts
-    void SaveAndUpload(int idx){
+    void SaveAndUpload(int idx,std::list<FrameOpts> &proposal){
         std::thread::id this_id = std::this_thread::get_id();
         get_end(idx);
 //        spdlog::info("proposal_.size() :{}",proposal_.size());
-        std::thread save([&,idx](){
+        std::thread save([&,idx,proposal](){
             /* save vide file */
-            std::unique_lock<std::mutex> uniqueLock(mutex_);
-            std::vector<cv::Mat> save_proposal(proposal_.size());
+            std::vector<cv::Mat> save_proposal(proposal.size());
             std::vector<int>res;
-            for(auto&& p :proposal_){
+            for(FrameOpts p :proposal){
                 if(!p.need_infer && !res.empty()){
                     p.det_res = res;
                 }
@@ -328,16 +329,17 @@ public:
                 res = p.det_res;
             }
             cache[std::chrono::steady_clock::now()] = "Detection completed: " + FatigueClass[idx] + ". Initiating video saving and cloud upload.";
-            proposal_.clear();
-            uniqueLock.unlock();
+
             std::string prefix = "/home/linaro/workspace/data/" + FatigueClass[idx] + "_";
             auto file_name = getCurrentTimeFilename(prefix,".avi");
+
             spdlog::info("[Thread {}] Detected {} behavior, saving file to \"{}\"...", spdlog::details::os::thread_id(),FatigueClass[idx],file_name);
             cv::VideoWriter writer(file_name,cv::VideoWriter::fourcc('X', 'V', 'I', 'D'),this->fps,cv::Size(width, height));
 
             for(const auto& img : save_proposal){
                 writer.write(img);
             }
+
             spdlog::info("[Thread {}] File \"{}\" saved successfully, uploading to the cloud...",spdlog::details::os::thread_id(),file_name);
             writer.release();
             /* upload vide file */
@@ -375,11 +377,25 @@ public:
                 curl_easy_cleanup(curl);
                 curl_formfree(formpost);
                 curl_slist_free_all(headers);
+
+                tcp_client.video_name = file_name;
+                tcp_client.video_name_len = string(tcp_client.video_name).size();/*计算名称长度*/
+                spdlog::info("[Thread {}] File \"{}\" has been verified and uploaded to the server.",spdlog::details::os::thread_id(),file_name);
+                Send_Date(tcp_client.send_buf, SEND_HANDLE_ID);/*发送报警数据*/
+                //ftp发送文件
+                bool ret = writeTxtfile(videofile_path,file_name);
+                if(ret == 0 )
+                {
+                    spdlog::warn("create_video.cpp 写视频文件信息失败");
+                    return false;
+                }
             }else{
                 spdlog::error("curl init failed!");
             }
             save_proposal.clear();
         });
+
+        proposal_.clear();
         save.detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -449,9 +465,34 @@ public:
 //    cv::waitKey(0);
     }
 
+    bool writeTxtfile(string& strPath,string& TxtData)/*Vector作为函数的参数或者返回值时，需要注意它的写法：double Distance(vector<int>&a, vector<int>&b) 其中的“&”绝对不能少*/
+    {
+        //ofstream txtfile(strPath);   //覆盖写入从已有的文件中写
+        ofstream txtfile(strPath, ofstream::app);  //不覆盖写入/*从已有的文件中写*/
+        if (!txtfile.is_open())
+        {
+//        cout<<"写操作不能打开文件!"<<endl;
+            return 0;
+        }
+        txtfile << TxtData;
+
+        txtfile <<"\n";
+        txtfile.close();
+        return 1;
+    }
+
     ~SeqProcesser(){
         if (workerThread.joinable()) {
             workerThread.join();
+        }
+        if(thread_tcp_rev.joinable()){
+            thread_tcp_rev.join();
+        }
+        if(thread_tcp_send.joinable()){
+            thread_tcp_send.join();
+        }
+        if(thread_ftp.joinable()){
+            thread_ftp.join();
         }
     }
 
@@ -479,7 +520,11 @@ private:
     int height;
     int fps;
     static std::string token;
+
     std::thread workerThread;
+    std::thread thread_tcp_rev;
+    std::thread thread_tcp_send;
+    std::thread thread_ftp;
 };
 
 

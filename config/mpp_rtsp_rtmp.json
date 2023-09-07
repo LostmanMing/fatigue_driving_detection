@@ -15,7 +15,7 @@
   },
   "encode_config": {
     "stream": {
-      "uri": "rtmp://192.168.3.184:1935/live/livestream"
+      "uri": "rtmp://58.218.237.198:1935/live/livestream"
     }
   },
   "model_config" : {

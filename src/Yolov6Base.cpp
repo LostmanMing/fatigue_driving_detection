@@ -31,7 +31,7 @@ Yolov6Base::Yolov6Base(char *rknn_path, int class_num, int imgsz):rknn_path(rknn
         spdlog::error("rknn_init error ret={}", ret);
         return ;
     }
-    spdlog::info("model input num: {}, output num: {}\n", io_num.n_input, io_num.n_output);
+    spdlog::info("model input num: {}, output num: {}", io_num.n_input, io_num.n_output);
     this->rknn_io_num = io_num;
     rknn_tensor_attr input_attrs[io_num.n_input];
     memset(input_attrs, 0, sizeof(input_attrs));
@@ -83,7 +83,7 @@ unsigned char *Yolov6Base::load_model(const char *filename, int *model_size) {
 
     fp = fopen(filename, "rb");
     if (NULL == fp) {
-        printf("Open file %s failed.\n", filename);
+        spdlog::error("Open file %s failed.", filename);
         return NULL;
     }
 
@@ -110,13 +110,13 @@ unsigned char * Yolov6Base::load_data(FILE *fp, size_t ofst, size_t sz) {
 
     ret = fseek(fp, ofst, SEEK_SET);
     if (ret != 0) {
-        printf("blob seek failure.\n");
+        spdlog::error("blob seek failure.");
         return NULL;
     }
 
     data = (unsigned char *) malloc(sz);
     if (data == NULL) {
-        printf("buffer malloc failure.\n");
+        spdlog::error("buffer malloc failure.");
         return NULL;
     }
     ret = fread(data, 1, sz, fp);
@@ -124,8 +124,8 @@ unsigned char * Yolov6Base::load_data(FILE *fp, size_t ofst, size_t sz) {
 }
 
 void Yolov6Base::dump_tensor_attr(rknn_tensor_attr *attr) {
-    printf("  index=%d, name=%s, n_dims=%d, dims=[%d, %d, %d, %d], n_elems=%d, size=%d, fmt=%s, type=%s, qnt_type=%s, "
-           "zp=%d, scale=%f\n",
+    spdlog::info("index={}, name={}, n_dims={}, dims=[{}, {}, {}, {}], n_elems={}, size={}, fmt={}, type={}, qnt_type={}, "
+           "zp={}, scale={}",
            attr->index, attr->name, attr->n_dims, attr->dims[0], attr->dims[1], attr->dims[2], attr->dims[3],
            attr->n_elems, attr->size, get_format_string(attr->fmt), get_type_string(attr->type),
            get_qnt_type_string(attr->qnt_type), attr->zp, attr->scale);

@@ -9,6 +9,7 @@
 #include <gst/gstelement.h>
 #include "opencv2/opencv.hpp"
 #include "postprocess.h"
+#define NETWORK_PATH    "/sys/class/net/enp7s0/carrier"  // 有线网络节点
 
 enum class DEVICE_TYPE{
     FILE,RTSP
@@ -80,6 +81,57 @@ struct FrameOpts{
     uint32_t frame_idx;
     bool need_infer = false;
     Object driver_bbox;
+};
+
+struct Config_struct
+{
+    uint8_t config_channel_num;
+    uint8_t set_channel_sum;/*通道总数*/
+    uint8_t set_channel_num;/*第几个通道*/
+    uint8_t set_channel_stutas;/*通道状态*/
+    uint8_t set_ai_sum;/*算法总数*/
+    uint8_t set_ai_num;/*算法个数*/
+    std::vector<std::string> ai_type;/*算法类型*/
+    uint8_t rtsp_ul_len;
+    std::string rtsp_ul;/*推流地址*/
+    uint8_t rtmp_ul_len;
+    std::string rtmp_ul;/*拉流地址*/
+    uint8_t draw_type;/*绘制报警线类型*/
+    uint8_t pointx_num;/*坐标个数*/
+    uint16_t pointx[10];/*坐标x*/
+    uint16_t pointy[10];/*坐标y*/
+
+    std::string   server_ip;/*平台ip*/
+    uint8_t   server_ip_len;/*平台ip长度*/
+    uint16_t   server_port;/*平台端口*/
+
+    std::string   ftp_ip;/*ftpip*/
+    uint8_t   ftp_ip_len;/*ftp ip长度*/
+
+    std::string   ftp_user;/*ftp user*/
+    uint8_t   ftp_user_len;
+    std::string   ftp_password;/*ftp 密码*/
+    uint8_t   ftp_password_len;
+
+    std::string   id_code;/*服务器识别码*/
+    uint8_t   id_code_len;
+    std::string code_ver;
+    Config_struct()
+    {
+        set_channel_sum = 0;/*通道总数*/
+        set_channel_num = 0;/*第几个通道*/
+        set_channel_stutas = 0;/*通道状态*/
+        set_ai_num = 0;/*算法个数*/
+        draw_type = 0;/*算法类型*/
+        pointx_num = 0;/*算法类型*/
+
+        server_ip_len = 0;/*平台ip长度*/
+        server_port = 0;/*平台端口*/
+        ftp_ip_len = 0;/*ftp ip长度*/
+        ftp_password_len = 0;
+        id_code_len = 0;
+    }
+
 };
 
 #endif //FATIGUE_DRIVING_DETECTION_COMMON_H

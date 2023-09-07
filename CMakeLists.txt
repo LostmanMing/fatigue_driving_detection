@@ -50,6 +50,8 @@ include_directories(${RKNN_API_PATH}/include)
 include_directories( ${RGA_PATH})
 include_directories( ${CMAKE_SOURCE_DIR}/include)
 include_directories( ${CMAKE_SOURCE_DIR}/APIGW)
+include_directories( ${CMAKE_SOURCE_DIR}/socket)
+include_directories( ${CMAKE_SOURCE_DIR}/ftp)
 #include_directories(/usr/local/arm/include)
 include_directories(/usr/include/aarch64-linux-gnu)
 
@@ -79,6 +81,11 @@ add_library(gw SHARED
         APIGW/signer.cpp
         APIGW/utils.cpp)
 
+add_library(socket SHARED
+        socket/tcp_clinent.cpp
+        ftp/ftp.cpp
+)
+
 target_include_directories(gw PRIVATE ${PROJECT_SOURCE_DIR}/APIGW)
 target_link_libraries(gw ssl  CURL::libcurl crypto)
 
@@ -107,6 +114,7 @@ target_link_libraries(fatigue_driving_detection
         gstpbutils-1.0
         CURL::libcurl
         gw
+        socket
         )
 
 
