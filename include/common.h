@@ -12,7 +12,7 @@
 #define NETWORK_PATH    "/sys/class/net/enp7s0/carrier"  // 有线网络节点
 
 enum class DEVICE_TYPE{
-    FILE,RTSP
+    FILE,RTSP,V4L2
 };
 enum class IMAGE_FORMAT{
     JPEG,BGRA,BGR,GRAY16,GRAY8,RGB,RGBA
@@ -27,6 +27,7 @@ public:
     int height;
     std::string file_path;
     std::string rtsp_uri;
+    std::string device_id;
     std::string rtmp_uri;
     bool video_sink_sync;
     bool video_sink_emit_signals;

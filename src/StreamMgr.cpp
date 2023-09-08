@@ -19,7 +19,7 @@ on_source_message(GstBus* bus, GstMessage* message, ProgramData* data)
             gst_object_unref(source);
             break;
         case GST_MESSAGE_ERROR:
-            spdlog::error("Received error");
+            spdlog::error("SRC Received error");
             g_main_loop_quit(data->loop);
             break;
         default:
@@ -39,7 +39,7 @@ on_sink_message(GstBus* bus, GstMessage* message, ProgramData* data)
             g_main_loop_quit(data->loop);
             break;
         case GST_MESSAGE_ERROR:
-            g_print("Received error");
+            g_print("SINK Received error");
             GError* err;
             gchar* debug_info;
             gst_message_parse_error(message, &err, &debug_info);
@@ -110,6 +110,8 @@ gboolean StreamMgr::buildDecodeStr() {
 //        ss << "filesrc location=" << opts.file_path << " name=src  ! qtdemux  ! queue ! decodebin ! videoconvert ! appsink name=video_sink";
     } else if(opts.deviceType == DEVICE_TYPE::RTSP){
         ss << "rtspsrc location=" << opts.rtsp_uri << "name=src ! rtph264depay ! h264parse ! mppvideodec ! queue ! videoconvert ! appsink name=video_sink";
+    } else if(opts.deviceType == DEVICE_TYPE::V4L2){
+        ss << "v4l2src device=" << opts.device_id << "name=src ! queue max-size-buffers=10 max-size-time=500000000 leaky=upstream ! image/jpeg, width=1280, height=720, framerate=25/1 ! mppjpegdec ! appsink name=video_sink";
     }
 
     //ss << "rtspsrc location=" << opts.rtsp_uri << " name=src ! application/x-rtp,media=audio ! rtpmp4gdepay ! aacparse ! avdec_aac ! audioconvert ! audioresample ! appsink name=audio_sink src. ! application/x-rtp,media=video ! rtph264depay ! h264parse ! nvv4l2decoder cudadec-memtype=2 ! nvvideoconvert ! appsink name=video_sink";

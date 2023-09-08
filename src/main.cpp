@@ -25,6 +25,9 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
                 config.deviceType = DEVICE_TYPE::FILE;
                 config.file_path = stream["uri"].asString();
                 spdlog::debug("---Decoder: file_path: {}",config.file_path);
+            } else if(root["type"] == "usb"){
+                config.deviceType = DEVICE_TYPE::V4L2;
+                config.device_id = stream["uri"].asString();
             }
         }
         if(decode_config.isMember("video_sink")){
@@ -59,7 +62,7 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
     }
 }
 
-const std::string CONFIG_PATH = "../config/mpp_rtsp_rtmp.json";
+const std::string CONFIG_PATH = "../config/mpp_v4l2_rtmp.json";
 
 int main(){
 

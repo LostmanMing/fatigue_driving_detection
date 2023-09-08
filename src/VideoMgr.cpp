@@ -75,7 +75,7 @@ void VideoMgr::Init() {
         );
         gst_object_unref(video_sink);
     }
-    if(opts.deviceType==DEVICE_TYPE::RTSP){
+    if(opts.deviceType==DEVICE_TYPE::RTSP ||opts.deviceType==DEVICE_TYPE::V4L2){
         g_object_set(
                 G_OBJECT(video_sink),
 //                "sync", false ,

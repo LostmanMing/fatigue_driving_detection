@@ -15,7 +15,14 @@
 #include "signal.h"
 #include "tcp_clinent.h"
 #include "ftp.h"
+#include "filesystem"
+#include "json/json.h"
+
+const std::string red = "\033[31m";
+const std::string green = "\033[32m";
+const std::string reset = "\033[0m";
 extern  std::string  videofile_path;
+extern struct tm * systime;
 class SeqProcesser {
 public:
     SeqProcesser(std::unique_ptr<Yolov6Base> inferpp, std::unique_ptr<Yolov6Base> inferem,PipelineOptions &opts)
@@ -189,7 +196,7 @@ public:
             if(it->det_res[idx] == 0 && it->need_infer) return ;
         }
         while(true){
-            if(proposal_.size() >= fps * 7){
+            if(proposal_.size() >= fps * 12){
                 return;
             }
             std::unique_lock<std::mutex> uniqueLock(mutex_);
@@ -318,29 +325,36 @@ public:
 //        spdlog::info("proposal_.size() :{}",proposal_.size());
         std::thread save([&,idx,proposal](){
             /* save vide file */
-            std::vector<cv::Mat> save_proposal(proposal.size());
+            std::vector<cv::Mat> save_proposal;
             std::vector<int>res;
             for(FrameOpts p :proposal){
                 if(!p.need_infer && !res.empty()){
                     p.det_res = res;
                 }
                 draw_objects(p.img,p.driver_bbox,p.det_res,FatigueClass[idx]);
-                save_proposal.emplace_back(p.img.clone());
+                cv::Mat resizedFrame;
+                cv::resize(p.img.clone(), resizedFrame, cv::Size(640,480));
+                save_proposal.push_back(resizedFrame);
                 res = p.det_res;
             }
-            cache[std::chrono::steady_clock::now()] = "Detection completed: " + FatigueClass[idx] + ". Initiating video saving and cloud upload.";
-
             std::string prefix = "/home/linaro/workspace/data/" + FatigueClass[idx] + "_";
-            auto file_name = getCurrentTimeFilename(prefix,".avi");
-
-            spdlog::info("[Thread {}] Detected {} behavior, saving file to \"{}\"...", spdlog::details::os::thread_id(),FatigueClass[idx],file_name);
-            cv::VideoWriter writer(file_name,cv::VideoWriter::fourcc('X', 'V', 'I', 'D'),this->fps,cv::Size(width, height));
+            auto file_name = getCurrentTimeFilename(prefix,".mp4");
+            time_t rawtime;
+            time(&rawtime);
+            auto time = localtime (&rawtime);
+            std::filesystem::path path(file_name);
+            string name = path.filename();
+            spdlog::info("[Thread {}] {}Detected{} {} behavior, saving file to \"{}\"...", spdlog::details::os::thread_id(),green,reset,FatigueClass[idx],file_name);
+            cv::VideoWriter writer(file_name,cv::VideoWriter::fourcc('a', 'v', 'c', '1'),this->fps,cv::Size(640, 480));
 
             for(const auto& img : save_proposal){
+//                cv::Mat resizedFrame;
+//                cv::resize(img, resizedFrame, cv::Size(640,480));
+//                writer.write(resizedFrame);
                 writer.write(img);
             }
 
-            spdlog::info("[Thread {}] File \"{}\" saved successfully, uploading to the cloud...",spdlog::details::os::thread_id(),file_name);
+            spdlog::info("[Thread {}] {}Saved{} file \"{}\"  successfully, uploading to the cloud...",spdlog::details::os::thread_id(),green,reset,file_name);
             writer.release();
             /* upload vide file */
             CURL *curl;
@@ -369,20 +383,43 @@ public:
 
                 auto res = curl_easy_perform(curl);
 
+                std::unique_lock uniqueLock(socket_m);
                 if(res != CURLE_OK){
                     spdlog::error("curl_easy_perform() failed: {}",curl_easy_strerror(res));
+                    tcp_client.cloud_res = 6;
                 } else{
-                    spdlog::info("[Thread {}] \"{}\" upload successful, response from ModelArts: {}",spdlog::details::os::thread_id(),file_name, readBuffer);
+                    Json::CharReaderBuilder builder;
+                    Json::CharReader* reader = builder.newCharReader();
+                    Json::Value root;
+                    std::string errors;
+                    bool parsingSuccessful = reader->parse(readBuffer.c_str(), readBuffer.c_str() + readBuffer.size(), &root, &errors);
+                    delete reader;
+                    if (!parsingSuccessful) {
+                       spdlog::error("Error parsing the string: {}",errors);
+                    }
+                    if(root.isMember("error_msg")){
+                        tcp_client.cloud_res = 5;
+                    }
+                    else if (root.isMember("result") && root["result"].isMember("drowsy") && root["result"]["drowsy"].isArray() && !root["result"]["drowsy"].empty() && root["result"]["drowsy"][0U].isMember("category")) {
+                        tcp_client.cloud_res = root["result"]["drowsy"][0U]["category"].asInt();
+                    } else {
+                        tcp_client.cloud_res = 0;
+                    }
+                    spdlog::info("[Thread {}] {}Upload{} \"{}\"  successful, response from ModelArts: {}",spdlog::details::os::thread_id(),green,reset,file_name, readBuffer);
                 }
                 curl_easy_cleanup(curl);
                 curl_formfree(formpost);
                 curl_slist_free_all(headers);
-
-                tcp_client.video_name = file_name;
-                tcp_client.video_name_len = string(tcp_client.video_name).size();/*计算名称长度*/
-                spdlog::info("[Thread {}] File \"{}\" has been verified and uploaded to the server.",spdlog::details::os::thread_id(),file_name);
+                systime = time;
+                tcp_client.image_name_len = 0;
+                tcp_client.video_name = name;
+                auto alarm_type = "PL_00" + to_string(idx+1);
+                tcp_client.ai_type.push_back(alarm_type);
+                tcp_client.video_name_len = name.size();/*计算名称长度*/
+                tcp_client.alert_num = 1;
+                spdlog::info("[Thread {}] {}Verified{} file \"{}\" has been uploaded to the server.",spdlog::details::os::thread_id(),green,reset,file_name);
                 Send_Date(tcp_client.send_buf, SEND_HANDLE_ID);/*发送报警数据*/
-                //ftp发送文件
+//                ftp发送文件
                 bool ret = writeTxtfile(videofile_path,file_name);
                 if(ret == 0 )
                 {
@@ -499,28 +536,26 @@ public:
     std::mutex mutex_;
     std::condition_variable cv_;
     std::queue<FrameOpts>  frames_;
-    std::map<std::chrono::steady_clock::time_point, std::string> cache;
 protected:
     std::list<FrameOpts>   proposal_;
 private:
     std::unordered_map<int,std::string> FatigueClass{
-            {0, "Look_around"},
-            {1, "Phone_call"},
-            {2, "Squint"},
-            {3, "Yawn"}
+            {0, "LookAround"},     //左顾右盼
+            {1, "PhoneCall"},      //打电话
+            {2, "Squint"},          //闭眼
+            {3, "Yawn"}             //打哈欠
     };
 
     std::unique_ptr<Yolov6Base> ppinfer;
     std::unique_ptr<Yolov6Base> eminfer;
     std::vector<int> during_fatigue;      //保存每个类别持续时间
-
+    std::mutex socket_m;
 
     int max_size;
     int width;
     int height;
     int fps;
     static std::string token;
-
     std::thread workerThread;
     std::thread thread_tcp_rev;
     std::thread thread_tcp_send;

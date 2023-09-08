@@ -7,12 +7,13 @@
 #include <iostream>
 #include <sstream>
 #include "ftp.h"
+#include <filesystem>
 #include "spdlog/spdlog.h"
 
 using namespace std;
 std::mutex video_file_mutex;
 
-std::string  videofile_path= "../config/video.txt";
+std::string  videofile_path= "/home/linaro/workspace/video.txt";
 
 struct ftp_struct  ftp_struct;
 
@@ -938,7 +939,7 @@ bool cleanTxtfile(string strPath)
     {
         return 1;
     }
-    std::cout<<"cleanTxtfile = "<< strPath <<std::endl;
+//    std::cout<<"cleanTxtfile = "<< strPath <<std::endl;
     file_writer.close();
     return 0;
 }
@@ -972,7 +973,7 @@ bool ftp_normal_send_funtion(struct ftp_struct*  ftp_struct)
         if(ftp->inputPassWord(ftp_struct->PassWord) == 230)// !输入密码
         {
             ftp_thread_create_status = true;
-            spdlog::info(" ftp 线程密码正确,进入ftp线程 ");
+//            spdlog::info(" ftp 线程密码正确,进入ftp线程 ");
         }
         else if(ftp->inputPassWord(ftp_struct->PassWord) == -1)
         {
@@ -992,7 +993,7 @@ bool ftp_normal_send_funtion(struct ftp_struct*  ftp_struct)
         {
             if(readData.size() == 0 )
             {
-                spdlog::info( " 读取ftp视频文件 为空 ");
+//                spdlog::info( " 读取ftp视频文件 为空 ");
                 ftp->quitServer();
                 delete ftp;//删除对象
                 return true;
@@ -1003,24 +1004,25 @@ bool ftp_normal_send_funtion(struct ftp_struct*  ftp_struct)
         }
         else
         {
-            spdlog::info(  " 读取 videofile_path 失败 ");
+//            spdlog::info(  " 读取 videofile_path 失败 ");
             ftp->quitServer();
             delete ftp;//删除对象
             return false;
         }
-        std::string RemoteFile;
-        std::string LocalFile;
+        std::string RemoteFile;    // filename
+        std::string LocalFile;     // path to file
         do{
             RemoteFile.clear();
             LocalFile.clear();
-            RemoteFile = readData[ftp_struct->read_video_num-1][1].c_str();
-            LocalFile = readData[ftp_struct->read_video_num-1][0]+ RemoteFile;
+            std::filesystem::path path(readData[ftp_struct->read_video_num-1][0]);
+            RemoteFile = path.filename();
+            LocalFile = readData[ftp_struct->read_video_num-1][0];
             //spdlog::info( " ftp 线程上传视频RemoteFile = {} ",RemoteFile.c_str());
             //spdlog::info( " ftp 线程上传视频RemoteFile = {} ", LocalFile.c_str());
             ret = ftp->Put(RemoteFile.c_str(),LocalFile.c_str());
             if( ret == 0)
             {
-               spdlog::info(  " ftp 线程上传视频成功 ");
+               spdlog::info(  "FTP \"{}\" has been upload to server.",LocalFile);
                 ftp_struct->read_video_num--;
             }
             else
@@ -1053,7 +1055,7 @@ void  ftp_thread_funtion(void)
     {
         ftp_normal_send_funtion( &ftp_struct);
         //spdlog::info(" ftp 线程运行 ");
-        sleep(20);
+        sleep(5);
     }
 
 }

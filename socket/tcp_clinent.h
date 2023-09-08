@@ -31,6 +31,7 @@ struct tcp_client {
     uint8_t dev_ip[7];/*设备IP*/
     uint8_t camera_ip[7];/*摄像头*/
     uint8_t  alert_num;/*报警个数*/
+    uint8_t cloud_res;/*云端返回结果*/
     vector<std::string >ai_type;/*算法类型*/
     uint32_t image_random[50];/*图片随机码*/
     uint8_t image_name_len;/*图片名称长度*/
@@ -84,7 +85,12 @@ struct tcp_client {
          image_last_bag_len = 0;// 图片最后一个包字节数、
          image_read_num = 0 ;/*图片包读取个数*/
          image_total_offset = 0;/*图片数据偏移量*/
-
+        bcd_id[0] = 01 ;
+        bcd_id[1] = 36 ;
+        bcd_id[2] = 85 ;
+        bcd_id[3] = 15 ;
+        bcd_id[4] = 27 ;
+        bcd_id[5] = 43 ;
         memset((void*)&serv_addr,0,sizeof(struct sockaddr_in));
         memset((void*)&recv_buf, 0, sizeof(recv_buf));
         memset((void*)&send_buf, 0, sizeof(send_buf));

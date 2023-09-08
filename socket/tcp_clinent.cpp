@@ -68,7 +68,7 @@ int create_tcp_client_ipv4(struct tcp_client *client)
     int ret = connect(client->fd, (struct sockaddr *)&client->serv_addr, sizeof(client->serv_addr));
     if(0 != ret)
     {
-        spdlog::info( " tcp_client 数据服务器连接失败 " );
+        spdlog::info( "tcp_client 数据服务器连接失败 " );
         return -3;
     }
     //spdlog::info("tcp_client 数据服务器连接成功！");
@@ -310,62 +310,63 @@ void Device_handle_information(unsigned char* sb)
     sb[17] = DEC2BCD(systime->tm_min);
     sb[18] = DEC2BCD(systime->tm_sec);
 
-    sb[19] = tcp_client.dev_ip[0];
-    sb[20] = tcp_client.dev_ip[1];
-    sb[21] = tcp_client.dev_ip[2];
-    sb[22] = tcp_client.dev_ip[3];
-    sb[23] = tcp_client.dev_ip[4];
-    sb[24] = tcp_client.dev_ip[5];
-    sb[25] = tcp_client.dev_ip[6];
+    sb[19] = 58;
+    sb[20] = 46;
+    sb[21] = 218;
+    sb[22] = 46;
+    sb[23] = 237;
+    sb[24] = 46;
+    sb[25] = 198;
     sb[26] = 0;
     sb[39] = 0;
     sb[40] = 0;
-    sb[41] = tcp_client.camera_ip[0];
-    sb[42] = tcp_client.camera_ip[1];
-    sb[43] = tcp_client.camera_ip[2];
-    sb[44] = tcp_client.camera_ip[3];
-    sb[45] = tcp_client.camera_ip[4];
-    sb[46] = tcp_client.camera_ip[5];
-    sb[47] = tcp_client.camera_ip[6];
+
+    sb[41] =192;
+    sb[42] =46;
+    sb[43] =168;
+    sb[44] =46;
+    sb[45] =6;
+    sb[46] =46;
+    sb[47] =111;
     //printf("tcp_client file tcp_client.dev_ip = %d %d %d %d %d %d %d\n",tcp_client.dev_ip[0],tcp_client.dev_ip[1],tcp_client.dev_ip[2], \
                     tcp_client.dev_ip[3],tcp_client.dev_ip[4],tcp_client.dev_ip[5],tcp_client.dev_ip[6]);
     //printf("tcp_client file tcp_client.camera_ip = %d %d %d %d %d %d %d\n",tcp_client.camera_ip[0],tcp_client.camera_ip[1],tcp_client.camera_ip[2], \
                     tcp_client.camera_ip[3],tcp_client.camera_ip[4],tcp_client.camera_ip[5],tcp_client.camera_ip[6]);
-    sb[48] = tcp_client.alert_num;/*报警个数*/
+    sb[48] = 1;/*报警个数*/
 
-    for(uint8_t i=0;i<tcp_client.alert_num;i++)
-    {
-
-        strcpy((char*)(sb+49+i*30),tcp_client.ai_type[i].c_str());
-        u32_to_u8.l32[0] = tcp_client.image_random[i];
-        sb[55 + (30 * i)] = u32_to_u8.C[3];
-        sb[56 + (30 * i)] = u32_to_u8.C[2];
-        sb[57 + (30 * i)] = u32_to_u8.C[1];
-        sb[58 + (30 * i)] = u32_to_u8.C[0];
+//    spdlog::info(tcp_client.ai_type[0]);
+    strcpy((char*)(sb+49),tcp_client.ai_type[0].c_str());
+    sb[55] = 0;
+    sb[56] = 0;
+    sb[57] = 0;
+    sb[58] = 0;
 //        cout << "tcp_client.ai_type =  " << tcp_client.ai_type[i].c_str() <<endl;
 //        printf("tcp_client 随机数 :%u \n", tcp_client.image_random[i]);
-    }
-    sum = 49 + tcp_client.alert_num*30;
 
-    sb[sum] = tcp_client.image_name_len;
+    sum = 49 +30;
+
+    sb[sum] = 0;//图片名称长度为0
     strcpy((char*)(sb+sum+1),tcp_client.image_name.c_str());
    // tcp_client.image_name_len = 0;
    // tcp_client.image_name.clear();
 //    printf(" tcp_client.image_name_len = :%d \n", tcp_client.image_name_len );
 //    cout << "tcp_client.image_name =  " << tcp_client.image_name.c_str() <<endl;
 
-    sum = sum + 1 + tcp_client.image_name_len;
+    sum +=  1;
 
     sb[sum] = tcp_client.video_name_len;
     strcpy((char*)(sb+sum+1),tcp_client.video_name.c_str());
+    sum = sum + 1 + tcp_client.video_name_len;
+    sb[sum] = tcp_client.cloud_res;
     //tcp_client.video_name_len = 0;
     //tcp_client.video_name.clear();
 
 
-    printf(" tcp_client.video_len = :%d \n", tcp_client.video_name_len );
-    cout << "tcp_client.video_name =  " << tcp_client.video_name.c_str() <<endl;
+//    printf(" tcp_client.video_len = :%d \n", tcp_client.video_name_len );
+//    cout << "tcp_client.video_name =  " << tcp_client.video_name.c_str() <<endl;
 
-    sum = sum + 1 + tcp_client.video_name_len;
+//    sum = sum + 1 + tcp_client.video_name_len;
+    sum += 1;
     tcp_client.handle_info_len = sum - 13;
     //printf(" tcp_client.handle_info_len = :%d \n", tcp_client.handle_info_len );
 }
