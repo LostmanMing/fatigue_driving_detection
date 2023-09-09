@@ -49,7 +49,7 @@ on_sink_message(GstBus* bus, GstMessage* message, ProgramData* data)
             g_error_free(err);
             g_free(debug_info);
             g_main_loop_quit(data->loop);
-            break;
+            break; 
         default:
             break;
     }

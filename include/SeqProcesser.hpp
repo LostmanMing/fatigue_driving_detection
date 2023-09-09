@@ -21,6 +21,7 @@
 const std::string red = "\033[31m";
 const std::string green = "\033[32m";
 const std::string reset = "\033[0m";
+const std::string blue = "\033[34m";
 extern  std::string  videofile_path;
 extern struct tm * systime;
 class SeqProcesser {
@@ -63,7 +64,7 @@ public:
         std::set<Header>::iterator it;
         for (auto header : *request->getHeaders()) {
             std::string headerEntry = header.getKey() + ": " + header.getValue();
-            spdlog::info("{}",headerEntry.c_str());
+//            spdlog::info("{}",headerEntry.c_str());
             chunk = curl_slist_append(chunk, headerEntry.c_str());
         }
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION,1L);
@@ -114,18 +115,22 @@ public:
                         }
                         if(flag){
                             if(get_status_res(1,needs)){
+                                spdlog::info("{}Detected{} {} behavior", blue, reset, FatigueClass[1]);
                                 SaveAndUpload(1,proposal_);
                                 continue;
                             }
                             if(get_status_res(0,needs)){
+                                spdlog::info("{}Detected{} {} behavior", blue, reset, FatigueClass[0]);
                                 SaveAndUpload(0,proposal_);
                                 continue;
                             }
                             if(get_status_res(3,needs)){
+                                spdlog::info("{}Detected{} {} behavior", blue, reset, FatigueClass[3]);
                                 SaveAndUpload(3,proposal_);
                                 continue;
                             }
                             if(get_status_res(2,needs)){
+                                spdlog::info("{}Detected{} {} behavior", blue, reset, FatigueClass[2]);
                                 SaveAndUpload(2,proposal_);
                                 continue;
                             }
@@ -210,10 +215,9 @@ public:
             uniqueLock.unlock();
             if(frame.need_infer){
                 infer(frame);
-                if(frame.det_res[idx] != 0){
-                    proposal_.push_back(frame);
-                } else break;
             }
+            proposal_.push_back(frame);
+            if(frame.det_res[idx] == 0 && frame.need_infer) break;
         }
     }
 
