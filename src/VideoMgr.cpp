@@ -34,7 +34,7 @@ GstFlowReturn VideoMgr::Excute(GstElement *bin) {
             cv::cvtColor(img_NV12,img_bgr,cv::COLOR_YUV2BGR_NV12);
             {
                 std::lock_guard<std::mutex> grd(processer.mutex_);
-                processer.frames_.emplace(img_bgr,cnt,need_infer);
+                processer.frames_.emplace(img_bgr,cnt++,need_infer);
                 need_infer = !need_infer;
 //                spdlog::info("frame queue size :{}",processer.frames_.size());
                 processer.cv_.notify_one();

@@ -20,8 +20,11 @@
 
 const std::string red = "\033[31m";
 const std::string green = "\033[32m";
-const std::string reset = "\033[0m";
+const std::string yellow = "\033[33m";
+const std::string cyan = "\033[36m";
 const std::string blue = "\033[34m";
+const std::string reset = "\033[0m";
+
 extern  std::string  videofile_path;
 extern struct tm * systime;
 class SeqProcesser {
@@ -201,7 +204,7 @@ public:
             if(it->det_res[idx] == 0 && it->need_infer) return ;
         }
         while(true){
-            if(proposal_.size() >= fps * 12){
+            if(proposal_.size() >= fps * 8){
                 return;
             }
             std::unique_lock<std::mutex> uniqueLock(mutex_);
@@ -327,117 +330,127 @@ public:
         std::thread::id this_id = std::this_thread::get_id();
         get_end(idx);
 //        spdlog::info("proposal_.size() :{}",proposal_.size());
-        std::thread save([&,idx,proposal](){
-            /* save vide file */
-            std::vector<cv::Mat> save_proposal;
-            std::vector<int>res;
-            for(FrameOpts p :proposal){
-                if(!p.need_infer && !res.empty()){
-                    p.det_res = res;
+        if( (10 <= proposal_.front().frame_idx - pre_idx && pre_cls == idx) || pre_cls!= idx ) { // 需要修改
+            std::thread save([&, idx, proposal]() {
+                /* save vide file */
+                std::vector<cv::Mat> save_proposal;
+                std::vector<int> res;
+                for (FrameOpts p: proposal) {
+                    if (!p.need_infer && !res.empty()) {
+                        p.det_res = res;
+                    }
+                    draw_objects(p.img, p.driver_bbox, p.det_res, FatigueClass[idx]);
+                    cv::Mat resizedFrame;
+                    cv::resize(p.img.clone(), resizedFrame, cv::Size(640, 480));
+                    save_proposal.push_back(resizedFrame);
+                    res = p.det_res;
                 }
-                draw_objects(p.img,p.driver_bbox,p.det_res,FatigueClass[idx]);
-                cv::Mat resizedFrame;
-                cv::resize(p.img.clone(), resizedFrame, cv::Size(640,480));
-                save_proposal.push_back(resizedFrame);
-                res = p.det_res;
-            }
-            std::string prefix = "/home/linaro/workspace/data/" + FatigueClass[idx] + "_";
-            auto file_name = getCurrentTimeFilename(prefix,".mp4");
-            time_t rawtime;
-            time(&rawtime);
-            auto time = localtime (&rawtime);
-            std::filesystem::path path(file_name);
-            string name = path.filename();
-            spdlog::info("[Thread {}] {}Detected{} {} behavior, saving file to \"{}\"...", spdlog::details::os::thread_id(),green,reset,FatigueClass[idx],file_name);
-            cv::VideoWriter writer(file_name,cv::VideoWriter::fourcc('a', 'v', 'c', '1'),this->fps,cv::Size(640, 480));
+                std::string prefix = "/home/linaro/workspace/data/" + FatigueClass[idx] + "_";
+                auto file_name = getCurrentTimeFilename(prefix, ".mp4");
+                time_t rawtime;
+                time(&rawtime);
+                auto time = localtime(&rawtime);
+                std::filesystem::path path(file_name);
+                string name = path.filename();
+                spdlog::info("[Thread {}] {}Detected{} {} behavior, saving file to \"{}\"...",
+                             spdlog::details::os::thread_id(), green, reset, FatigueClass[idx], file_name);
+                cv::VideoWriter writer(file_name, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), this->fps,
+                                       cv::Size(640, 480));
 
-            for(const auto& img : save_proposal){
+                for (const auto &img: save_proposal) {
 //                cv::Mat resizedFrame;
 //                cv::resize(img, resizedFrame, cv::Size(640,480));
 //                writer.write(resizedFrame);
-                writer.write(img);
-            }
-
-            spdlog::info("[Thread {}] {}Saved{} file \"{}\"  successfully, uploading to the cloud...",spdlog::details::os::thread_id(),green,reset,file_name);
-            writer.release();
-            /* upload vide file */
-            CURL *curl;
-            curl = curl_easy_init();
-            std::string readBuffer;
-            if(curl){
-                struct curl_httppost *formpost = nullptr;
-                struct curl_httppost *lastptr = nullptr;
-                // 添加表单数据
-                curl_formadd(&formpost,
-                             &lastptr,
-                             CURLFORM_COPYNAME, "input_video",
-                             CURLFORM_FILE, file_name.c_str(),
-                             CURLFORM_END);
-                curl_easy_setopt(curl, CURLOPT_URL, "https://71696f82bccb4c899786e3e7d3757882.apig.cn-north-4.huaweicloudapis.com/v1/infers/8f0a3dda-d67e-417a-be5e-4eaeaf2c82c8");
-                curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+                    writer.write(img);
+                }
+                save_proposal.clear();
+                spdlog::info("[Thread {}] {}Saved{} file \"{}\"  successfully, uploading to the {}cloud{}...",
+                             spdlog::details::os::thread_id(), green, reset, file_name,cyan,reset);
+                writer.release();
+                /* upload vide file */
+                CURL *curl;
+                curl = curl_easy_init();
+                std::string readBuffer;
+                if (curl) {
+                    struct curl_httppost *formpost = nullptr;
+                    struct curl_httppost *lastptr = nullptr;
+                    // 添加表单数据
+                    curl_formadd(&formpost,
+                                 &lastptr,
+                                 CURLFORM_COPYNAME, "input_video",
+                                 CURLFORM_FILE, file_name.c_str(),
+                                 CURLFORM_END);
+                    curl_easy_setopt(curl, CURLOPT_URL,
+                                     "https://71696f82bccb4c899786e3e7d3757882.apig.cn-north-4.huaweicloudapis.com/v1/infers/8f0a3dda-d67e-417a-be5e-4eaeaf2c82c8");
+                    curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
 //                curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // 开启详细输出
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback); // 设置写回调函数
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer); // 设置写回调函数的第四个参数
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // 跳过SSL验证
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // 跳过SSL验证
-                // 设置HTTP头
-                struct curl_slist *headers = nullptr;
-                headers = curl_slist_append(headers,token.c_str());
-                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback); // 设置写回调函数
+                    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer); // 设置写回调函数的第四个参数
+                    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // 跳过SSL验证
+                    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // 跳过SSL验证
+                    // 设置HTTP头
+                    struct curl_slist *headers = nullptr;
+                    headers = curl_slist_append(headers, token.c_str());
+                    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-                auto res = curl_easy_perform(curl);
+                    auto res = curl_easy_perform(curl);
 
-                std::unique_lock uniqueLock(socket_m);
-                if(res != CURLE_OK){
-                    spdlog::error("curl_easy_perform() failed: {}",curl_easy_strerror(res));
-                    tcp_client.cloud_res = 6;
-                } else{
-                    Json::CharReaderBuilder builder;
-                    Json::CharReader* reader = builder.newCharReader();
-                    Json::Value root;
-                    std::string errors;
-                    bool parsingSuccessful = reader->parse(readBuffer.c_str(), readBuffer.c_str() + readBuffer.size(), &root, &errors);
-                    delete reader;
-                    if (!parsingSuccessful) {
-                       spdlog::error("Error parsing the string: {}",errors);
-                    }
-                    if(root.isMember("error_msg")){
-                        tcp_client.cloud_res = 5;
-                    }
-                    else if (root.isMember("result") && root["result"].isMember("drowsy") && root["result"]["drowsy"].isArray() && !root["result"]["drowsy"].empty() && root["result"]["drowsy"][0U].isMember("category")) {
-                        tcp_client.cloud_res = root["result"]["drowsy"][0U]["category"].asInt();
+                    std::unique_lock uniqueLock(socket_m);
+                    if (res != CURLE_OK) {
+                        spdlog::error("curl_easy_perform() failed: {}", curl_easy_strerror(res));
+                        tcp_client.cloud_res = 6;
                     } else {
-                        tcp_client.cloud_res = 0;
+                        Json::CharReaderBuilder builder;
+                        Json::CharReader *reader = builder.newCharReader();
+                        Json::Value root;
+                        std::string errors;
+                        bool parsingSuccessful = reader->parse(readBuffer.c_str(),
+                                                               readBuffer.c_str() + readBuffer.size(), &root, &errors);
+                        delete reader;
+                        if (!parsingSuccessful) {
+                            spdlog::error("Error parsing the string: {}", errors);
+                        }
+                        if (root.isMember("error_msg")) {
+                            tcp_client.cloud_res = 5;
+                        } else if (root.isMember("result") && root["result"].isMember("drowsy") &&
+                                   root["result"]["drowsy"].isArray() && !root["result"]["drowsy"].empty() &&
+                                   root["result"]["drowsy"][0U].isMember("category")) {
+                            tcp_client.cloud_res = root["result"]["drowsy"][0U]["category"].asInt();
+                        } else {
+                            tcp_client.cloud_res = 0;
+                        }
+                        spdlog::info("[Thread {}] {}Upload{} \"{}\"  successfully, response from ModelArts: {}",
+                                     spdlog::details::os::thread_id(), green, reset, file_name, readBuffer);
                     }
-                    spdlog::info("[Thread {}] {}Upload{} \"{}\"  successful, response from ModelArts: {}",spdlog::details::os::thread_id(),green,reset,file_name, readBuffer);
-                }
-                curl_easy_cleanup(curl);
-                curl_formfree(formpost);
-                curl_slist_free_all(headers);
-                systime = time;
-                tcp_client.image_name_len = 0;
-                tcp_client.video_name = name;
-                auto alarm_type = "PL_00" + to_string(idx+1);
-                tcp_client.ai_type.push_back(alarm_type);
-                tcp_client.video_name_len = name.size();/*计算名称长度*/
-                tcp_client.alert_num = 1;
-                spdlog::info("[Thread {}] {}Verified{} file \"{}\" has been uploaded to the server.",spdlog::details::os::thread_id(),green,reset,file_name);
-                Send_Date(tcp_client.send_buf, SEND_HANDLE_ID);/*发送报警数据*/
+                    curl_easy_cleanup(curl);
+                    curl_formfree(formpost);
+                    curl_slist_free_all(headers);
+                    systime = time;
+                    tcp_client.image_name_len = 0;
+                    tcp_client.video_name = name;
+                    auto alarm_type = "PL_00" + to_string(idx + 1);
+                    tcp_client.ai_type.push_back(alarm_type);
+                    tcp_client.video_name_len = name.size();/*计算名称长度*/
+                    tcp_client.alert_num = 1;
+                    spdlog::info("[Thread {}] {}Verified{} file \"{}\" has been uploaded to the {}server{}.",
+                                 spdlog::details::os::thread_id(), green, reset, file_name,yellow,reset);
+                    Send_Date(tcp_client.send_buf, SEND_HANDLE_ID);/*发送报警数据*/
 //                ftp发送文件
-                bool ret = writeTxtfile(videofile_path,file_name);
-                if(ret == 0 )
-                {
-                    spdlog::warn("create_video.cpp 写视频文件信息失败");
-                    return false;
+                    bool ret = writeTxtfile(videofile_path, file_name);
+                    if (ret == 0) {
+                        spdlog::warn("create_video.cpp 写视频文件信息失败");
+                        return false;
+                    }
+                } else {
+                    spdlog::error("curl init failed!");
                 }
-            }else{
-                spdlog::error("curl init failed!");
-            }
-            save_proposal.clear();
-        });
+            });
 
+            save.detach();
+        }
+        pre_cls = idx;
+        pre_idx = proposal_.back().frame_idx;
         proposal_.clear();
-        save.detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     //响应报文回调函数
@@ -475,7 +488,6 @@ public:
         std::string headStatus  = det_res[0] == 1 ? "Head Turning" : "Head Forward";
         std::string phoneStatus = det_res[1] == 1 ? "Using Phone" : "Not Using Phone";
 
-        res.pop_back();
         // 定义文字的位置
         int x = 10;
         int y = 50;
@@ -554,6 +566,8 @@ private:
     std::unique_ptr<Yolov6Base> eminfer;
     std::vector<int> during_fatigue;      //保存每个类别持续时间
     std::mutex socket_m;
+    long long pre_idx = -1;
+    int pre_cls = -1000;
 
     int max_size;
     int width;

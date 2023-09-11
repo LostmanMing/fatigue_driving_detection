@@ -50,6 +50,7 @@ typedef struct
     GMainLoop* loop;
     GstElement* source;
     GstElement* sink;
+    bool restart_pipeline = FALSE;
 } ProgramData;
 
 struct FrameOpts{
@@ -60,6 +61,7 @@ struct FrameOpts{
         det_res = opts.det_res;
         is_det = opts.is_det;
         is_cal = opts.is_cal;
+        frame_idx = opts.frame_idx;
         need_infer = opts.need_infer;
         driver_bbox = opts.driver_bbox;
     }
@@ -71,6 +73,7 @@ struct FrameOpts{
         det_res = opts.det_res;
         is_det = opts.is_det;
         is_cal = opts.is_cal;
+        frame_idx = opts.frame_idx;
         need_infer = opts.need_infer;
         driver_bbox = opts.driver_bbox;
         return *this;

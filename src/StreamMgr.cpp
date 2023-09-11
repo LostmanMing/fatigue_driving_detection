@@ -9,8 +9,9 @@
 static gboolean
 on_source_message(GstBus* bus, GstMessage* message, ProgramData* data)
 {
+    GError* err = NULL;
+    gchar* debug_info = NULL;
     GstElement* source;
-
     switch (GST_MESSAGE_TYPE(message)) {
         case GST_MESSAGE_EOS:
             spdlog::debug("The source got EOS");
@@ -19,8 +20,22 @@ on_source_message(GstBus* bus, GstMessage* message, ProgramData* data)
             gst_object_unref(source);
             break;
         case GST_MESSAGE_ERROR:
-            spdlog::error("SRC Received error");
-            g_main_loop_quit(data->loop);
+            gst_message_parse_error(message, &err, &debug_info);
+            spdlog::error("SRC Received error from element {}: {}", GST_OBJECT_NAME(message->src), err->message);
+            spdlog::error("Debug info: {}", debug_info ? debug_info : "none");
+            if (strstr(err->message, "frame") != NULL) {
+                spdlog::warn("Decided to skip frame due to error");
+                GstElement* queue = gst_bin_get_by_name(GST_BIN(data->source), "q");
+                gst_element_send_event(queue, gst_event_new_flush_start());
+                gst_element_send_event(queue, gst_event_new_flush_stop(TRUE));
+                gst_object_unref(queue);
+            } else{
+                spdlog::error("Stopping due to error,");
+                g_main_loop_quit(data->loop);
+                data->restart_pipeline = TRUE;
+            }
+            g_error_free(err);
+            g_free(debug_info);
             break;
         default:
             break;
@@ -49,7 +64,7 @@ on_sink_message(GstBus* bus, GstMessage* message, ProgramData* data)
             g_error_free(err);
             g_free(debug_info);
             g_main_loop_quit(data->loop);
-            break; 
+            break;
         default:
             break;
     }
@@ -111,7 +126,7 @@ gboolean StreamMgr::buildDecodeStr() {
     } else if(opts.deviceType == DEVICE_TYPE::RTSP){
         ss << "rtspsrc location=" << opts.rtsp_uri << "name=src ! rtph264depay ! h264parse ! mppvideodec ! queue ! videoconvert ! appsink name=video_sink";
     } else if(opts.deviceType == DEVICE_TYPE::V4L2){
-        ss << "v4l2src device=" << opts.device_id << "name=src ! queue max-size-buffers=10 max-size-time=500000000 leaky=upstream ! image/jpeg, width=1280, height=720, framerate=25/1 ! mppjpegdec ! appsink name=video_sink";
+        ss << "v4l2src device=" << opts.device_id << "name=src ! queue max-size-buffers=10 max-size-time=500000000 leaky=upstream name=q ! image/jpeg, width=1280, height=720, framerate=25/1 ! mppjpegdec ! appsink name=video_sink";
     }
 
     //ss << "rtspsrc location=" << opts.rtsp_uri << " name=src ! application/x-rtp,media=audio ! rtpmp4gdepay ! aacparse ! avdec_aac ! audioconvert ! audioresample ! appsink name=audio_sink src. ! application/x-rtp,media=video ! rtph264depay ! h264parse ! nvv4l2decoder cudadec-memtype=2 ! nvvideoconvert ! appsink name=video_sink";
@@ -179,6 +194,19 @@ gboolean StreamMgr::Start() {
     spdlog::debug("Let's run!");
     g_main_loop_run(data->loop);
 
+    while (data->restart_pipeline = TRUE){
+
+        data->restart_pipeline = FALSE; // Reset the flag
+
+        gst_element_set_state(data->source, GST_STATE_NULL);
+        gst_element_set_state(data->sink, GST_STATE_NULL);
+
+        gst_element_set_state(data->source, GST_STATE_PLAYING);
+        gst_element_set_state(data->sink, GST_STATE_PLAYING);
+        spdlog::warn("try to restart pipeline again");
+        g_main_loop_run(data->loop);  // Run the main loop again
+    }
+    spdlog::info("pipeline stoped.");
     return TRUE;
 }
 

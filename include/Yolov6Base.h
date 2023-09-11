@@ -10,6 +10,7 @@
 #include "rknn_api.h"
 #include "rga.h"
 #include "postprocess.h"
+#include <sys/time.h>
 
 class Yolov6Base {
 public:

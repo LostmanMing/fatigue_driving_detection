@@ -5,6 +5,9 @@
 #include "Yolov6PP.h"
 float Yolov6PP::PP_BOX_THRESH = 0.4;
 float Yolov6PP::PP_NMS_THRESH = 0.6;
+
+inline double __get_us(struct timeval t) { return (t.tv_sec * 1000000 + t.tv_usec); }
+
 void Yolov6PP::Preprocess(cv::Mat &img) {
     int ret;
     // init rga context
@@ -107,6 +110,8 @@ std::vector<Object> Yolov6PP::infer(cv::Mat &mat) {
 //    cv::Mat img;
 //    cv::cvtColor(mat, img, cv::COLOR_BGR2RGB);
     Preprocess(mat);
+//    struct timeval start_time, stop_time;
+//    gettimeofday(&start_time, NULL);
     rknn_inputs_set(ctx, rknn_io_num.n_input, inputs);
     rknn_output outputs[rknn_io_num.n_output];
     memset(outputs, 0, sizeof(outputs));
@@ -115,6 +120,8 @@ std::vector<Object> Yolov6PP::infer(cv::Mat &mat) {
     }
     rknn_run(ctx, nullptr);
     rknn_outputs_get(ctx, rknn_io_num.n_output, outputs, nullptr);
+//    gettimeofday(&stop_time, NULL);
+//    spdlog::info("yolopp once run use {} ms", (__get_us(stop_time) - __get_us(start_time)) / 1000);
     std::vector<Object> objects;  //det results
     //sacle
     float size_scale = std::min(width / (ori_width*1.0), height / (ori_height*1.0));

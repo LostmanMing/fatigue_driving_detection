@@ -62,14 +62,17 @@ static void Parse(PipelineOptions& config,const std::string& config_path){
     }
 }
 
-const std::string CONFIG_PATH = "../config/mpp_v4l2_rtmp.json";
 
-int main(){
-
+int main(int argc, char *argv[]){
+    if (argc < 2) {
+        spdlog::error("please input config file path!");
+        return 1; // exit with error code
+    }
+    const string configFilePath = argv[1];
     spdlog::set_level(spdlog::level::info);
 
     PipelineOptions opts;
-    Parse(opts,CONFIG_PATH);
+    Parse(opts,configFilePath);
 
     std::unique_ptr<StreamMgr> smgr = std::make_unique<StreamMgr>(opts);
 

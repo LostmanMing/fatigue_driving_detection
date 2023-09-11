@@ -11,7 +11,7 @@ float Yolov6EM::EM_NMS_THRESH = 0.45;
 inline int my_softmax(float* input){
     return exp(input[0]) > exp(input[1]) ? 0 : 1;
 }
-
+inline double __get_us(struct timeval t) { return (t.tv_sec * 1000000 + t.tv_usec); }
 void Yolov6EM::Preprocess(cv::Mat &img) {
     int ret;
     // init rga context
@@ -114,7 +114,9 @@ void Yolov6EM::draw_objects(const cv::Mat& bgr, const std::vector<Object>& objec
 std::vector<Object> Yolov6EM::infer(cv::Mat &mat) {
 //    cv::Mat img;
 //    cv::cvtColor(mat, img, cv::COLOR_BGR2RGB);
+//    struct timeval start_time, stop_time;
     Preprocess(mat);
+//    gettimeofday(&start_time, NULL);
     rknn_inputs_set(ctx, rknn_io_num.n_input, inputs);
     rknn_output outputs[rknn_io_num.n_output];
     memset(outputs, 0, sizeof(outputs));
@@ -123,6 +125,8 @@ std::vector<Object> Yolov6EM::infer(cv::Mat &mat) {
     }
     rknn_run(ctx, nullptr);
     rknn_outputs_get(ctx, rknn_io_num.n_output, outputs, nullptr);
+//    gettimeofday(&stop_time, NULL);
+//    spdlog::info("yoloem once run use {} ms", (__get_us(stop_time) - __get_us(start_time)) / 1000);
     std::vector<Object> objects;  //det results
     //sacle
     float size_scale = std::min(width / (ori_width*1.0), height / (ori_height*1.0));

@@ -33,6 +33,8 @@ const int anchor0[6] = {10, 13, 16, 30, 33, 23};
 const int anchor1[6] = {30, 61, 62, 45, 59, 119};
 const int anchor2[6] = {116, 90, 156, 198, 373, 326};
 
+
+
 inline static int clamp(float val, int min, int max) { return val > min ? (val < max ? val : max) : min; }
 char* readLine(FILE* fp, char* buffer, int* len)
 {
