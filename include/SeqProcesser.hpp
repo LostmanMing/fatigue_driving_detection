@@ -47,7 +47,7 @@ public:
         height = opts.height;
         fps = opts.frameRate;
         max_size = opts.frameRate * 3;
-        during_fatigue = std::vector<int>(4,0);
+        during_fatigue = std::vector<int>(5,0);
 
         /* 请求 token 写成方法会 double free，搞不懂 */
         RequestParams* request = new RequestParams("POST", "iam.cn-east-3.myhuaweicloud.com", "/v3/auth/tokens",
@@ -107,7 +107,7 @@ public:
                                 }
                             }
                         }
-                        std::vector<int> needs(4,0);
+                        std::vector<int> needs(5,0);
                         bool flag = false; //是否需要补帧
                         for(int i = 0;i < needs.size();i++){
                             needs[i] = max_size - during_fatigue[i];
@@ -117,6 +117,10 @@ public:
                             }
                         }
                         if(flag){
+                            if(get_status_res(4,needs)){
+                                spdlog::warn("3s内未检测到驾驶员，请检查摄像头角度或是否有遮挡。");
+                                proposal_.clear();
+                            }
                             if(get_status_res(1,needs)){
                                 spdlog::info("{}Detected{} {} behavior", blue, reset, FatigueClass[1]);
                                 SaveAndUpload(1,proposal_);
@@ -320,8 +324,8 @@ public:
                         }
                     }
                 } else frame.det_res[3] = 0;
-            } else frame.det_res[0] = 0;
-        } else frame.det_res[0] = 0;
+            } else frame.det_res[4] = 1;
+        } else frame.det_res[4] = 1;
 
     }
 

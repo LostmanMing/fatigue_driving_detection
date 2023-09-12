@@ -54,7 +54,7 @@ typedef struct
 } ProgramData;
 
 struct FrameOpts{
-    FrameOpts(cv::Mat &img,uint32_t idx,bool need_infer) : det_res(std::vector<int>(4,0)), img(img), frame_idx(idx), need_infer(need_infer) {}
+    FrameOpts(cv::Mat &img,uint32_t idx,bool need_infer) : det_res(std::vector<int>(5,0)), img(img), frame_idx(idx), need_infer(need_infer) {}
     FrameOpts(){};
     FrameOpts(const FrameOpts &opts){
         img = opts.img.clone();
