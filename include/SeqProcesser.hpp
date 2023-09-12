@@ -119,7 +119,8 @@ public:
                         if(flag){
                             if(get_status_res(4,needs)){
                                 spdlog::warn("3s内未检测到驾驶员，请检查摄像头角度或是否有遮挡。");
-                                proposal_.clear();
+                                SaveAndUpload(4,proposal_);
+                                continue;
                             }
                             if(get_status_res(1,needs)){
                                 spdlog::info("{}Detected{} {} behavior", blue, reset, FatigueClass[1]);
@@ -414,17 +415,28 @@ public:
                         if (!parsingSuccessful) {
                             spdlog::error("Error parsing the string: {}", errors);
                         }
-                        if (root.isMember("error_msg")) {
+                        if(idx == 4) {
+                            tcp_client.cloud_res = 7;
+                        }
+                        else if (root.isMember("error_msg")) {
                             tcp_client.cloud_res = 5;
+                            spdlog::info("[Thread {}] {}Verified{} file \"{}\" failed ! {}Cloud{} is offline.",
+                                         spdlog::details::os::thread_id(), green, reset, file_name, cyan, reset);
                         } else if (root.isMember("result") && root["result"].isMember("drowsy") &&
                                    root["result"]["drowsy"].isArray() && !root["result"]["drowsy"].empty() &&
                                    root["result"]["drowsy"][0U].isMember("category")) {
+                            spdlog::info("[Thread {}] {}Upload{} \"{}\"  successfully, response from ModelArts: {}",
+                                         spdlog::details::os::thread_id(), green, reset, file_name, readBuffer);
                             tcp_client.cloud_res = root["result"]["drowsy"][0U]["category"].asInt();
+                            spdlog::info("[Thread {}] {}Verified{} file \"{}\" in {}cloud{}, detection result is consistent, uploading to the {}server{}.",
+                                         spdlog::details::os::thread_id(), green, reset, file_name,cyan,reset,yellow,reset);
                         } else {
+                            spdlog::info("[Thread {}] {}Upload{} \"{}\"  successfully, response from ModelArts: {}",
+                                         spdlog::details::os::thread_id(), green, reset, file_name, readBuffer);
                             tcp_client.cloud_res = 0;
+                            spdlog::info("[Thread {}] {}Verified{} file \"{}\" in {}cloud{}, no abnormal behavior detected, uploading to the {}server{}.",
+                                         spdlog::details::os::thread_id(), green, reset, file_name,cyan,reset,yellow,reset);
                         }
-                        spdlog::info("[Thread {}] {}Upload{} \"{}\"  successfully, response from ModelArts: {}",
-                                     spdlog::details::os::thread_id(), green, reset, file_name, readBuffer);
                     }
                     curl_easy_cleanup(curl);
                     curl_formfree(formpost);
@@ -436,8 +448,6 @@ public:
                     tcp_client.ai_type.push_back(alarm_type);
                     tcp_client.video_name_len = name.size();/*计算名称长度*/
                     tcp_client.alert_num = 1;
-                    spdlog::info("[Thread {}] {}Verified{} file \"{}\" has been uploaded to the {}server{}.",
-                                 spdlog::details::os::thread_id(), green, reset, file_name,yellow,reset);
                     Send_Date(tcp_client.send_buf, SEND_HANDLE_ID);/*发送报警数据*/
 //                ftp发送文件
                     bool ret = writeTxtfile(videofile_path, file_name);
@@ -475,7 +485,8 @@ public:
             size_t end = header.find("\r\n", start);
             std::string value = header.substr(start, end - start);
             token = "X-Auth-Token:"+ value;
-            spdlog::info("----Curl Get X-Subject-Token:{}",value);
+//            spdlog::info("----Curl Get X-Subject-Token:{}",value);
+            spdlog::info("----Curl Get X-Subject-Token successfully");
         }
         return size*nitems;
     }
@@ -562,8 +573,9 @@ private:
     std::unordered_map<int,std::string> FatigueClass{
             {0, "LookAround"},     //左顾右盼
             {1, "PhoneCall"},      //打电话
-            {2, "Squint"},          //闭眼
-            {3, "Yawn"}             //打哈欠
+            {2, "Squint"},         //闭眼
+            {3, "Yawn"},           //打哈欠
+            {4,"occlusion"}
     };
 
     std::unique_ptr<Yolov6Base> ppinfer;
